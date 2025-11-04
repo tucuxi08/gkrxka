@@ -1,11 +1,11 @@
 """
 Spotify Search + Signup Backend - Flask
 XAI 기반 음악 추천 웹사이트 백엔드
-기능: 검색 + 회원가입 + 로그인
+기능: 검색 + 회원가입 + 로그인 + 정적 파일 서빙(HTML, 이미지)
 완벽한 CORS 설정
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 import os
@@ -18,7 +18,10 @@ import re
 
 load_dotenv()
 
-app = Flask(__name__)
+# ===== Flask 앱 설정 (정적 파일 서빙) =====
+app = Flask(__name__,
+            static_folder=os.path.join(os.path.dirname(__file__), 'frontend'),
+            static_url_path='')
 
 # ===== CORS 설정 (완벽하게) =====
 CORS(app, 
@@ -143,6 +146,43 @@ def get_spotify_token():
     except requests.exceptions.RequestException as e:
         print(f"❌ Spotify 인증 실패: {e}")
         return None
+
+# ===== 정적 파일 서빙 =====
+# HTML 파일 서빙
+@app.route('/')
+def index():
+    """로그인 페이지"""
+    return app.send_static_file('login.html')
+
+@app.route('/onboarding.html')
+def onboarding():
+    """온보딩 페이지 (장르 선택)"""
+    return app.send_static_file('onboarding.html')
+
+@app.route('/main.html')
+def main():
+    """메인 페이지"""
+    return app.send_static_file('main.html')
+
+# 이미지 서빙
+@app.route('/images/<filename>')
+def serve_image(filename):
+    """frontend/images 폴더에서 이미지 파일 서빙"""
+    images_folder = os.path.join(os.path.dirname(__file__), 'frontend', 'images')
+    return send_from_directory(images_folder, filename)
+
+# CSS, JS 등 기타 정적 파일
+@app.route('/css/<filename>')
+def serve_css(filename):
+    """CSS 파일 서빙"""
+    css_folder = os.path.join(os.path.dirname(__file__), 'frontend', 'css')
+    return send_from_directory(css_folder, filename)
+
+@app.route('/js/<filename>')
+def serve_js(filename):
+    """JavaScript 파일 서빙"""
+    js_folder = os.path.join(os.path.dirname(__file__), 'frontend', 'js')
+    return send_from_directory(js_folder, filename)
 
 # ===== 회원가입 API =====
 @app.route('/api/signup', methods=['POST', 'OPTIONS'])
@@ -323,6 +363,48 @@ def login():
     except Exception as e:
         print(f"❌ 로그인 오류: {e}")
         return jsonify({"success": False, "message": "로그인 처리 중 오류 발생"}), 500
+
+# ===== 온보딩 API (장르 선택) =====
+@app.route('/api/user/onboarding', methods=['POST', 'OPTIONS'])
+def user_onboarding():
+    """
+    온보딩 완료 (선호 장르 저장)
+    
+    Request:
+    {
+        "user_id": 1,
+        "favorite_genres": ["K-POP", "Hip-Hop", "R&B", "Pop"]
+    }
+    """
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        favorite_genres = data.get('favorite_genres', [])
+        
+        if not user_id:
+            return jsonify({"success": False, "message": "user_id 필요"}), 400
+        
+        # 장르를 JSON 형태로 저장
+        genres_json = json.dumps(favorite_genres)
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE users SET preferred_genre = ? WHERE id = ?
+        ''', (genres_json, user_id))
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ 온보딩 완료: user_id={user_id}, genres={favorite_genres}")
+        
+        return jsonify({
+            "success": True,
+            "message": "온보딩 완료"
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ 온보딩 오류: {e}")
+        return jsonify({"success": False, "message": "오류 발생"}), 500
 
 # ===== Spotify 검색 API =====
 @app.route('/api/spotify/search', methods=['GET', 'POST', 'OPTIONS'])
@@ -678,7 +760,7 @@ if __name__ == '__main__':
     init_db()
     
     print("=" * 60)
-    print("🎵 Spotify + Signup Backend 시작")
+    print("🎵 Spotify + Signup + 정적 파일 서빙 시작")
     print("=" * 60)
     print(f"Flask 서버: http://localhost:5000")
     print(f"\n📍 API 엔드포인트:")
@@ -686,7 +768,11 @@ if __name__ == '__main__':
     print(f"  - 회원가입: POST http://localhost:5000/api/signup")
     print(f"  - 중복확인: POST http://localhost:5000/api/check-duplicate")
     print(f"  - 로그인: POST http://localhost:5000/api/login")
+    print(f"  - 온보딩: POST http://localhost:5000/api/user/onboarding")
     print(f"  - 헬스 체크: GET http://localhost:5000/api/health")
+    print(f"\n📁 정적 파일 서빙:")
+    print(f"  - HTML: http://localhost:5000/onboarding.html")
+    print(f"  - 이미지: http://localhost:5000/images/image.kpop.png")
     print("=" * 60)
     
     # 개발 환경에서 실행 (프로덕션에서는 gunicorn 사용)
