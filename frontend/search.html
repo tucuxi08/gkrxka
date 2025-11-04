@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auralyze - 검색</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-primary-light: #FFFFE0;
+            --color-primary-sky: #F0FFFF;
+            --color-primary-blue: #F0F8FF;
+            --color-accent-light: #E6C7C2;
+            --color-accent-dark: #ECC5C0;
+            --text-dark: #1a1a1a;
+            --text-light: #666666;
+            --border-light: #e5e5e5;
+            --bg-white: #ffffff;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary-sky) 50%, var(--color-primary-blue) 100%);
+            background-attachment: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: calc(100vh - 40px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            grid-template-rows: auto 1fr;
+        }
+
+        /* 헤더 - 전체 너비 */
+        .header {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            grid-column: 1 / -1;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--color-accent-dark);
+            box-shadow: 0 0 0 3px rgba(236, 197, 192, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: var(--text-light);
+            pointer-events: none;
+        }
+
+        /* 로딩 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: var(--text-light);
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border-light);
+            border-top-color: var(--color-accent-dark);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 좌측: 검색 결과 */
+        .left-panel {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .results-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .songs-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .song-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: var(--color-primary-light);
+            border-radius: 12px;
+            align-items: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .song-item:hover {
+            background: var(--border-light);
+            transform: translateX(4px);
+        }
+
+        .song-item.selected {
+            background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+            border-color: var(--color-accent-dark);
+            color: white;
+        }
+
+        .song-cover {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .song-item.selected .song-cover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .song-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .song-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .song-item.selected .song-title {
+            color: white;
+        }
+
+        .song-artist {
+            font-size: 11px;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .song-item.selected .song-artist {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .song-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            background: var(--bg-white);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .song-item.selected .action-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+            color: white;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: var(--color-accent-light);
+            border-color: var(--color-accent-dark);
+        }
+
+        .action-btn.liked {
+            background: var(--color-accent-light);
+            color: var(--color-accent-dark);
+            border-color: var(--color-accent-dark);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .empty-text {
+            font-size: 13px;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+            font-size: 12px;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        /* 우측: 플레이어 */
+        .right-panel {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .player-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .player-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-primary-light);
+            border-radius: 12px;
+            min-height: 300px;
+        }
+
+        .player-content {
+            text-align: center;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .no-selection {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        .spotify-iframe {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* 플레이리스트 팝업 */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .playlist-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .playlist-modal.active {
+            display: flex;
+        }
+
+        .modal-header {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .modal-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .playlist-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--color-primary-light);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .playlist-option:hover {
+            background: var(--border-light);
+        }
+
+        .playlist-option input[type="radio"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .playlist-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .new-playlist-btn {
+            padding: 12px;
+            background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .new-playlist-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(236, 197, 192, 0.3);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .btn-cancel,
+        .btn-confirm {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel {
+            background: var(--color-primary-light);
+            color: var(--text-dark);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-cancel:hover {
+            background: var(--border-light);
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(236, 197, 192, 0.3);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-accent-light);
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .right-panel {
+                grid-column: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <div class="header-title">🔍 Spotify 검색</div>
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="searchInput"
+                    placeholder="곡 제목이나 아티스트로 검색..."
+                    autocomplete="off"
+                >
+                <div class="search-icon">🔍</div>
+            </div>
+        </div>
+
+        <!-- 좌측: 검색 결과 -->
+        <div class="left-panel">
+            <div class="error-message" id="errorMessage"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px;">검색 중...</p>
+            </div>
+            <div class="results-title" id="resultsTitle">검색 결과</div>
+            <div class="songs-list" id="songsList">
+                <div class="empty-state">
+                    <div class="empty-icon">🎵</div>
+                    <div class="empty-text">곡을 검색해보세요</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측: 플레이어 -->
+        <div class="right-panel">
+            <div class="player-title">🎵 플레이어</div>
+            <div class="player-container">
+                <div class="player-content">
+                    <div id="playerDisplay" class="no-selection">곡을 선택하면 재생됩니다</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 백드롭 -->
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+
+    <!-- 플레이리스트 팝업 -->
+    <div class="playlist-modal" id="playlistModal">
+        <div class="modal-header">플레이리스트 선택</div>
+        
+        <div class="modal-content" id="playlistList">
+            <!-- 플리 목록 -->
+        </div>
+
+        <button class="new-playlist-btn" onclick="createNewPlaylist()">
+            + 새 플레이리스트
+        </button>
+
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closePlaylistModal()">취소</button>
+            <button class="btn-confirm" onclick="addSongToPlaylist()">추가</button>
+        </div>
+    </div>
+
+    <script>
+        // ===== 설정 =====
+        const API_BASE_URL = 'http://localhost:5000';
+        const DEBOUNCE_DELAY = 500;
+        
+        let likedSongs = [];
+        let searchResults = [];
+        let userPlaylists = [
+            { id: 'pl_1', name: 'My Favorites' },
+            { id: 'pl_2', name: 'Chill Vibes' },
+            { id: 'pl_3', name: 'Workout Mix' },
+        ];
+        let searchTimeout;
+        let selectedSong = null;
+
+        // ===== 초기화 =====
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLikedSongs();
+            setupSearchListener();
+            setupModalBackdrop();
+        });
+
+        // ===== 검색 리스너 =====
+        function setupSearchListener() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                
+                const query = e.target.value.trim();
+                
+                if (query.length === 0) {
+                    searchResults = [];
+                    renderSongs([]);
+                    hideError();
+                    return;
+                }
+                
+                if (query.length < 2) return;
+                
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, DEBOUNCE_DELAY);
+            });
+        }
+
+        // ===== Spotify 검색 실행 =====
+        async function performSearch(query) {
+            showLoading();
+            hideError();
+            
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/api/spotify/search?q=${encodeURIComponent(query)}&limit=15`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    searchResults = data.data;
+                    console.log('✅ 검색 성공:', searchResults);
+                    renderSongs(searchResults);
+                } else {
+                    showError(data.error || '검색 중 오류가 발생했습니다');
+                }
+            } catch (error) {
+                console.error('검색 오류:', error);
+                showError(`검색 실패: ${error.message}`);
+                renderSongs([]);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ===== UI 렌더링 =====
+        function renderSongs(songs) {
+            const songsList = document.getElementById('songsList');
+            const resultsTitle = document.getElementById('resultsTitle');
+
+            if (songs.length === 0) {
+                resultsTitle.textContent = '검색 결과';
+                songsList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-text">검색 결과가 없습니다</div>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsTitle.textContent = `검색 결과 (${songs.length}개)`;
+            songsList.innerHTML = songs.map(song => {
+                const isLiked = likedSongs.includes(song.id);
+                const isSelected = selectedSong && selectedSong.id === song.id;
+                
+                return `
+                    <div class="song-item ${isSelected ? 'selected' : ''}" onclick="selectSong(${JSON.stringify(song).replace(/"/g, '&quot;')})">
+                        <div class="song-cover" style="${song.image ? `background-image: url('${song.image}');` : ''}">
+                            ${!song.image ? '🎵' : ''}
+                        </div>
+                        <div class="song-info">
+                            <div class="song-title" title="${song.title}">${song.title}</div>
+                            <div class="song-artist" title="${song.artist}">${song.artist}</div>
+                        </div>
+                        <div class="song-actions">
+                            <button class="action-btn ${isLiked ? 'liked' : ''}" 
+                                    onclick="toggleLike('${song.id}', '${song.title.replace(/'/g, "\\'")}', event)"
+                                    title="좋아요">
+                                ${isLiked ? '❤️' : '🤍'}
+                            </button>
+                            <button class="action-btn" 
+                                    onclick="showPlaylistModal('${song.id}', '${song.title.replace(/'/g, "\\'")}', event)"
+                                    title="플레이리스트에 추가">
+                                📋
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ===== 곡 선택 (우측에 플레이어 표시) =====
+        function selectSong(song) {
+            selectedSong = song;
+            console.log('🎵 곡 선택:', song.title);
+            
+            const playerDisplay = document.getElementById('playerDisplay');
+            
+            // Spotify 웹 플레이어 임베드
+            playerDisplay.innerHTML = `
+                <iframe class="spotify-iframe"
+                        style="height: 152px;"
+                        src="https://open.spotify.com/embed/track/${song.id}?utm_source=generator" 
+                        frameBorder="0" 
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy">
+                </iframe>
+            `;
+            
+            // 검색 결과 업데이트
+            renderSongs(searchResults);
+        }
+
+        // ===== 좋아요 토글 =====
+        function toggleLike(songId, songTitle, event) {
+            event.stopPropagation();
+            
+            const index = likedSongs.indexOf(songId);
+            if (index === -1) {
+                likedSongs.push(songId);
+                console.log(`❤️ 좋아요 추가: ${songTitle}`);
+            } else {
+                likedSongs.splice(index, 1);
+                console.log(`💔 좋아요 제거: ${songTitle}`);
+            }
+            
+            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+            renderSongs(searchResults);
+        }
+
+        // ===== 플레이리스트 모달 =====
+        function showPlaylistModal(songId, songTitle, event) {
+            event.stopPropagation();
+            document.getElementById('playlistModal').dataset.songId = songId;
+            document.getElementById('playlistModal').dataset.songTitle = songTitle;
+            renderPlaylistList();
+            document.getElementById('playlistModal').classList.add('active');
+            document.getElementById('modalBackdrop').style.display = 'block';
+        }
+
+        function closePlaylistModal() {
+            document.getElementById('playlistModal').classList.remove('active');
+            document.getElementById('modalBackdrop').style.display = 'none';
+        }
+
+        function renderPlaylistList() {
+            const playlistList = document.getElementById('playlistList');
+            playlistList.innerHTML = userPlaylists.map((pl, idx) => `
+                <label class="playlist-option">
+                    <input type="radio" name="playlist" value="${pl.id}" ${idx === 0 ? 'checked' : ''}>
+                    <span class="playlist-name">${pl.name}</span>
+                </label>
+            `).join('');
+        }
+
+        function addSongToPlaylist() {
+            const selectedPlaylist = document.querySelector('input[name="playlist"]:checked');
+            const songId = document.getElementById('playlistModal').dataset.songId;
+            const songTitle = document.getElementById('playlistModal').dataset.songTitle;
+            
+            if (!selectedPlaylist) {
+                alert('플레이리스트를 선택해주세요');
+                return;
+            }
+            
+            const playlistId = selectedPlaylist.value;
+            const song = searchResults.find(s => s.id === songId);
+            
+            if (!song) return;
+            
+            let playlistSongs = JSON.parse(localStorage.getItem(`playlist_${playlistId}`) || '[]');
+            if (!playlistSongs.find(s => s.id === songId)) {
+                playlistSongs.push(song);
+                localStorage.setItem(`playlist_${playlistId}`, JSON.stringify(playlistSongs));
+                console.log(`📋 플레이리스트에 추가: ${songTitle}`);
+            }
+            
+            alert(`"${songTitle}"을(를) 플레이리스트에 추가했습니다!`);
+            closePlaylistModal();
+        }
+
+        function createNewPlaylist() {
+            const name = prompt('새 플레이리스트 이름:');
+            if (name) {
+                const newPl = {
+                    id: `pl_${Date.now()}`,
+                    name: name
+                };
+                userPlaylists.push(newPl);
+                renderPlaylistList();
+                alert(`"${name}" 플레이리스트가 생성되었습니다!`);
+            }
+        }
+
+        function setupModalBackdrop() {
+            document.getElementById('modalBackdrop').addEventListener('click', closePlaylistModal);
+        }
+
+        // ===== localStorage 관리 =====
+        function loadLikedSongs() {
+            const saved = localStorage.getItem('likedSongs');
+            likedSongs = saved ? JSON.parse(saved) : [];
+        }
+
+        // ===== 로딩 & 에러 표시 =====
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.classList.add('active');
+            console.error('❌ 에러:', message);
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

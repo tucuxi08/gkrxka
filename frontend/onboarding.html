@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auralyze - 장르 선택</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-primary-light: #FFFFE0;
+            --color-primary-sky: #F0FFFF;
+            --color-primary-blue: #F0F8FF;
+            --color-accent-light: #E6C7C2;
+            --color-accent-dark: #ECC5C0;
+            --text-dark: #1a1a1a;
+            --text-light: #666666;
+            --border-light: #e5e5e5;
+            --bg-white: #ffffff;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary-sky) 50%, var(--color-primary-blue) 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .container {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 32px 28px;
+            max-width: 1000px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        .genres-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .genre-card {
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .genre-image {
+            width: 100%;
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 8px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .genre-card.selected .genre-image {
+            border-color: var(--color-accent-dark);
+            transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(236, 197, 192, 0.3);
+        }
+
+        .genre-card:hover .genre-image {
+            transform: translateY(-3px);
+        }
+
+        .genre-checkbox {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 24px;
+            height: 24px;
+            background: var(--color-accent-dark);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 3px 8px rgba(236, 197, 192, 0.3);
+        }
+
+        .genre-card.selected .genre-checkbox {
+            display: flex;
+        }
+
+        .genre-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dark);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .selection-info {
+            background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-sky));
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid var(--border-light);
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: var(--text-light);
+            margin-bottom: 4px;
+        }
+
+        .selection-count {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-skip {
+            background: var(--color-primary-light);
+            color: var(--text-dark);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-skip:hover {
+            background: var(--border-light);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-continue {
+            background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+            color: white;
+        }
+
+        .btn-continue:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(236, 197, 192, 0.3);
+        }
+
+        .btn-continue:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .genres-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .genres-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Auralyze</h1>
+            <p>좋아하는 장르 4개를 선택해주세요</p>
+        </div>
+
+        <div class="genres-grid" id="genresGrid">
+            <!-- 장르 카드 -->
+        </div>
+
+        <div class="selection-info">
+            <div class="info-label">선택된 장르</div>
+            <div class="selection-count">
+                <span id="selectedCount">0</span> / 4
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button class="btn btn-skip" onclick="skipOnboarding()">건너뛰기</button>
+            <button class="btn btn-continue" id="continueBtn" disabled onclick="completeOnboarding()">계속</button>
+        </div>
+    </div>
+
+    <script>
+        // 장르 데이터
+        const GENRES = [
+            { id: 'genre_1', name: 'K-POP', emoji: '🎤' },
+            { id: 'genre_2', name: 'Hip-Hop', emoji: '🎙️' },
+            { id: 'genre_3', name: 'R&B', emoji: '🎵' },
+            { id: 'genre_4', name: 'Pop', emoji: '⭐' },
+            { id: 'genre_5', name: 'Indie', emoji: '🎸' },
+            { id: 'genre_6', name: 'Jazz', emoji: '🎷' },
+            { id: 'genre_7', name: 'Electronic', emoji: '🎹' },
+            { id: 'genre_8', name: 'Folk', emoji: '🍂' },
+            { id: 'genre_9', name: 'Metal', emoji: '🤘' },
+            { id: 'genre_10', name: 'Classical', emoji: '🎻' },
+            { id: 'genre_11', name: 'Blues', emoji: '💙' },
+            { id: 'genre_12', name: 'Soul', emoji: '🔥' },
+        ];
+
+        let selectedGenres = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderGenres();
+        });
+
+        function renderGenres() {
+            const grid = document.getElementById('genresGrid');
+            grid.innerHTML = GENRES.map(genre => `
+                <div class="genre-card ${selectedGenres.find(g => g.id === genre.id) ? 'selected' : ''}" 
+                     onclick="toggleGenre('${genre.id}', '${genre.name}')">
+                    <div class="genre-image">
+                        ${genre.emoji}
+                        <div class="genre-checkbox">✓</div>
+                    </div>
+                    <div class="genre-name">${genre.name}</div>
+                </div>
+            `).join('');
+        }
+
+        function toggleGenre(id, name) {
+            const index = selectedGenres.findIndex(g => g.id === id);
+            
+            if (index === -1) {
+                // 추가 (최대 4개)
+                if (selectedGenres.length < 4) {
+                    selectedGenres.push({ id, name });
+                }
+            } else {
+                // 제거
+                selectedGenres.splice(index, 1);
+            }
+
+            updateUI();
+        }
+
+        function updateUI() {
+            // 카운트 업데이트
+            document.getElementById('selectedCount').textContent = selectedGenres.length;
+
+            // 버튼 활성화
+            document.getElementById('continueBtn').disabled = selectedGenres.length < 4;
+
+            // 카드 상태 업데이트
+            renderGenres();
+        }
+
+        function completeOnboarding() {
+            const genreNames = selectedGenres.map(g => g.name);
+            const userId = localStorage.getItem('user_id');
+            
+            console.log('선택된 장르:', genreNames);
+
+            fetch('/api/user/onboarding', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    favorite_genres: genreNames
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('온보딩 완료:', data);
+                window.location.href = '/main.html';
+            })
+            .catch(err => {
+                console.error('오류:', err);
+                // 테스트용: 로컬에 저장하고 진행
+                localStorage.setItem('favorite_genres', JSON.stringify(genreNames));
+                window.location.href = '/main.html';
+            });
+        }
+
+        function skipOnboarding() {
+            window.location.href = '/main.html';
+        }
+    </script>
+</body>
+</html>

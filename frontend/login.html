@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auralyze</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-100: #BFBFBF;
+            --primary-200: #a2a2a2;
+            --primary-300: #616161;
+            --accent-100: #F2BAC9;
+            --accent-200: #8e5c6a;
+            --text-100: #333333;
+            --text-200: #5c5c5c;
+            --bg-100: #F5ECEC;
+            --bg-200: #ebe2e2;
+            --bg-300: #c2baba;
+            --error: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-100);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* ===== 로그인 박스 (가로 긴 직사각형) ===== */
+        .login-box {
+            background: white;
+            border-radius: 25px;
+            padding: 60px 80px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+            width: 100%;
+            max-width: 900px;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* ===== LOGIN 제목 ===== */
+        .login-box h1 {
+            font-size: 48px;
+            color: var(--text-100);
+            margin-bottom: 50px;
+            text-align: center;
+            font-weight: 700;
+            letter-spacing: 3px;
+        }
+
+        /* ===== 폼 ===== */
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* ===== 폼 그룹 ===== */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            color: var(--text-200);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        /* ===== 입력창 (더 크고 더 둥글게) ===== */
+        .form-group input {
+            height: 50px;
+            font-size: 16px;
+            border: 2px solid var(--bg-300);
+            border-radius: 25px;
+            outline: none;
+            padding: 0 20px;
+            background-color: var(--bg-100);
+            color: var(--text-100);
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            border-color: var(--accent-100);
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(242, 186, 201, 0.15);
+        }
+
+        .form-group input::placeholder {
+            color: var(--primary-200);
+        }
+
+        /* ===== 에러 메시지 ===== */
+        .error-message {
+            font-size: 12px;
+            color: var(--error);
+            margin-top: 8px;
+            min-height: 16px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* ===== 로그인 버튼 ===== */
+        .btn-login {
+            height: 50px;
+            margin-top: 15px;
+            background: linear-gradient(135deg, var(--accent-100) 0%, var(--accent-200) 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(242, 186, 201, 0.3);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(242, 186, 201, 0.4);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        /* ===== 계정 없음 섹션 ===== */
+        .signup-section {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid var(--bg-300);
+            font-size: 14px;
+            color: var(--text-200);
+        }
+
+        .signup-section a {
+            color: var(--accent-200);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-left: 8px;
+        }
+
+        .signup-section a:hover {
+            color: var(--accent-100);
+            text-decoration: underline;
+        }
+
+        /* ===== 반응형 ===== */
+        @media (max-width: 768px) {
+            .login-box {
+                padding: 45px 40px;
+                min-height: auto;
+            }
+
+            .login-box h1 {
+                font-size: 36px;
+                margin-bottom: 35px;
+            }
+
+            .form-group input,
+            .btn-login {
+                height: 45px;
+                font-size: 15px;
+            }
+
+            .login-form {
+                gap: 20px;
+            }
+
+            .signup-section {
+                margin-top: 30px;
+                padding-top: 20px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-box {
+                padding: 35px 25px;
+            }
+
+            .login-box h1 {
+                font-size: 28px;
+                margin-bottom: 30px;
+                letter-spacing: 2px;
+            }
+
+            .form-group input,
+            .btn-login {
+                height: 42px;
+                font-size: 14px;
+            }
+
+            .signup-section {
+                margin-top: 25px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>LOGIN</h1>
+
+        <form class="login-form" onsubmit="handleLogin(event)">
+            <!-- 아이디 -->
+            <div class="form-group">
+                <label for="username">아이디</label>
+                <input type="text" id="username" placeholder="아이디를 입력하세요" required>
+                <div class="error-message" id="usernameError"></div>
+            </div>
+
+            <!-- 비밀번호 -->
+            <div class="form-group">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" placeholder="비밀번호를 입력하세요" required>
+                <div class="error-message" id="passwordError"></div>
+            </div>
+
+            <!-- 로그인 버튼 -->
+            <button type="submit" class="btn-login">Complete</button>
+        </form>
+
+        <!-- 계정 없음 섹션 -->
+        <div class="signup-section">
+            계정이 없으신가요?
+            <a href="/signup">회원가입</a>
+        </div>
+    </div>
+
+    <script>
+        // 로그인 처리 함수
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            // 입력값 검증
+            if (!username) {
+                showError('usernameError', '아이디를 입력하세요.');
+                return;
+            }
+            
+            if (!password) {
+                showError('passwordError', '비밀번호를 입력하세요.');
+                return;
+            }
+            
+            // Flask 백엔드 API 호출
+            fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 로그인 성공 - 사용자 정보 저장
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('user_id', data.user.id);
+                    localStorage.setItem('username', data.user.username);
+                    
+                    console.log('✓ 로그인 성공:', data.user.nickname);
+                    
+                    // 온보딩 페이지로 이동
+                    setTimeout(() => {
+                        window.location.href = '/onboarding';
+                    }, 500);
+                } else {
+                    // 로그인 실패
+                    const message = data.message || '로그인에 실패했습니다.';
+                    
+                    if (data.message.includes('아이디')) {
+                        showError('usernameError', message);
+                    } else {
+                        showError('passwordError', message);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('passwordError', '로그인 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 에러 표시
+        function showError(elementId, message) {
+            const errorEl = document.getElementById(elementId);
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        // 에러 숨기기
+        function hideError(elementId) {
+            const errorEl = document.getElementById(elementId);
+            errorEl.textContent = '';
+            errorEl.classList.remove('show');
+        }
+
+        // 입력 시 에러 메시지 자동 제거
+        document.addEventListener('DOMContentLoaded', () => {
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            
+            if (usernameInput) {
+                usernameInput.addEventListener('input', () => hideError('usernameError'));
+            }
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('input', () => hideError('passwordError'));
+            }
+        });
+    </script>
+</body>
+</html>

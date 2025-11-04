@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auralyze</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+    :root {
+        --light-1: #F2D4D7;
+        --light-2: #FFE6E8;
+        --light-3: #FFE4E1;
+        --light-4: #FFDFDD;
+        --light-5: #FBCFCD;
+        --light-6: #FFCCCB;
+        --light-7: #F7CAC9;
+        --light-8: #F6C6BD;
+        --dark: #CBBBB9;
+        --gray-1: #E8E8E8;
+        --gray-2: #D9D9D9;
+        --gray-3: #C8C8C8;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+
+    body {
+        font-family: 'Montserrat', sans-serif;
+        color: #3a3a3a;
+        line-height: 1.6;
+        overflow-x: hidden;
+        background: linear-gradient(135deg, #F2D4D7 0%, #FFE6E8 25%, #E8E8E8 50%, #FFDFDD 75%, #FBCFCD 100%);
+        background-attachment: fixed;
+    }
+
+    /* ===== NAVIGATION ===== */
+    nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 50px;
+        z-index: 1000;
+    }
+
+    .logo-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .logo-container img {
+        height: 45px;
+        width: auto;
+        border-radius: 8px;
+    }
+
+    .logo-text {
+        font-size: 24px;
+        font-weight: 600;
+        color: #3a3a3a;
+        letter-spacing: -1px;
+        font-family: 'Playfair Display', serif;
+    }
+
+    .auth-buttons {
+        display: flex;
+        gap: 15px;
+    }
+
+    .btn-auth {
+        padding: 10px 25px;
+        border: none;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.4s ease;
+        backdrop-filter: blur(10px);
+        font-family: 'Montserrat', sans-serif;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-signup {
+        background: rgba(203, 187, 185, 0.5);
+        color: #3a3a3a;
+        border: 1px solid rgba(203, 187, 185, 0.8);
+    }
+
+    .btn-signup:hover {
+        transform: translateY(-2px);
+        background: rgba(203, 187, 185, 0.7);
+    }
+
+    .btn-login {
+        background: rgba(255, 255, 255, 0.3);
+        color: #3a3a3a;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .btn-login:hover {
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* ===== SECTION 1: HERO GRADIENT ===== */
+    .section-hero {
+        min-height: 100vh;
+        padding-top: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #F2D4D7 0%, #FFE6E8 25%, #E8E8E8 50%, #FFDFDD 75%, #FBCFCD 100%);
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+    }
+
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+    }
+
+    .hero-title {
+        font-size: 72px;
+        font-weight: 400;
+        font-family: 'Playfair Display', serif;
+        color: rgba(58, 58, 58, 0.8);
+        margin-bottom: 20px;
+        opacity: 0;
+        animation: fadeInDown 1s ease-out forwards;
+    }
+
+    .hero-subtitle {
+        font-size: 20px;
+        font-weight: 300;
+        color: rgba(58, 58, 58, 0.5);
+        letter-spacing: 3px;
+        opacity: 0;
+        animation: fadeInDown 1s ease-out 0.3s forwards;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ===== SECTION 2: FEATURES ===== */
+    .section-features {
+        min-height: 300vh;
+        padding: 0 50px 150px 50px;
+        margin-top: -200px;
+        padding-top: 200px;
+        background: linear-gradient(135deg, #F2D4D7 0%, #FFE6E8 25%, #E8E8E8 50%, #FFDFDD 75%, #FBCFCD 100%);
+        background-attachment: fixed;
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+        position: relative;
+    }
+
+    .features-wrapper {
+        max-width: 1400px;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .headphone-sticky {
+        position: sticky;
+        top: 150px;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 300px;
+    }
+
+    .headphone-img {
+width: 450px;
+height: 450px;
+background: url('KakaoTalk_20251029_011541698-removebg-preview.png') center/contain no-repeat;
+border: none;
+border-radius: 0;
+background-color: transparent;
+box-shadow: none;
+filter: drop-shadow(0 10px 20px rgba(0,0,0,0.25)); /* 자연스러운 그림자 */
+
+}
+    /* ===== GLASS OVERLAY ===== */
+    .glass-container {
+        position: absolute;
+        top: 600px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 95%;
+        max-width: 1300px;
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(30px);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 40px;
+        padding: 100px 80px;
+        box-shadow: 0 8px 32px rgba(203, 187, 185, 0.15);
+        z-index: 20;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 50px;
+    }
+
+    .feature-card {
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 25px;
+        padding: 50px 35px;
+        text-align: center;
+        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        opacity: 0;
+    }
+
+    .feature-card.visible {
+        opacity: 1;
+        animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .feature-card:hover {
+        background: rgba(255, 255, 255, 0.7);
+        border-color: rgba(255, 255, 255, 0.9);
+        transform: translateY(-20px);
+        box-shadow: 0 25px 60px rgba(203, 187, 185, 0.3);
+    }
+
+    @keyframes popIn {
+        0% {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .feature-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+    }
+
+    .feature-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #3a3a3a;
+        font-family: 'Playfair Display', serif;
+    }
+
+    .feature-text {
+        font-size: 14px;
+        color: rgba(58, 58, 58, 0.6);
+        line-height: 1.8;
+        font-weight: 300;
+    }
+
+    /* ===== SECTION 3: FAQ ===== */
+    .section-faq {
+        min-height: 100vh;
+        padding: 100px 50px;
+        background: linear-gradient(135deg, rgba(232, 232, 232, 0.3) 0%, rgba(255, 230, 232, 0.3) 100%);
+    }
+
+    .faq-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 80px;
+        align-items: flex-start;
+    }
+
+    .faq-image-sticky {
+        position: sticky;
+        top: 150px;
+    }
+
+    .faq-img {
+        width: 100%;
+        height: 500px;
+        border-radius: 25px;
+        background-size: cover;
+        background-position: center;
+        background-image: url('<https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=500&h=500&fit=crop>');
+        box-shadow: 0 30px 80px rgba(203, 187, 185, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        opacity: 0;
+        animation: slideInLeft 0.8s ease-out forwards;
+    }
+
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .faq-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .faq-title {
+        font-size: 48px;
+        font-weight: 400;
+        font-family: 'Playfair Display', serif;
+        color: #3a3a3a;
+        margin-bottom: 30px;
+        opacity: 0;
+        animation: slideInRight 0.8s ease-out forwards;
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .faq-item {
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 18px;
+        padding: 28px 30px;
+        cursor: pointer;
+        transition: all 0.4s ease;
+        position: relative;
+        overflow: visible;
+    }
+
+    .faq-item:hover {
+        background: rgba(255, 255, 255, 0.65);
+        border-color: rgba(255, 255, 255, 0.8);
+        box-shadow: 0 15px 40px rgba(203, 187, 185, 0.2);
+        transform: translateY(-5px);
+    }
+
+    .faq-question-box {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .faq-question-text {
+        font-size: 16px;
+        font-weight: 500;
+        color: #3a3a3a;
+        text-align: left;
+    }
+
+    .faq-icon {
+        font-size: 24px;
+        color: #CBBBB9;
+        transition: transform 0.4s ease;
+        flex-shrink: 0;
+    }
+
+    .faq-item.active .faq-icon {
+        transform: rotate(180deg);
+    }
+
+    /* ===== TOOLTIP ===== */
+    .faq-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(0);
+        background: rgba(58, 58, 58, 0.95);
+        color: white;
+        padding: 14px 18px;
+        border-radius: 12px;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        z-index: 100;
+        font-weight: 300;
+        white-space: normal;
+        width: 320px;
+        text-align: center;
+        line-height: 1.6;
+        margin-bottom: 15px;
+        max-height: 0;
+        overflow: hidden;
+    }
+
+    .faq-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 10px solid transparent;
+        border-top-color: rgba(58, 58, 58, 0.95);
+    }
+
+    .faq-item:hover .faq-tooltip {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-15px);
+        max-height: 200px;
+    }
+
+    /* ===== SECTION 4: FOOTER ===== */
+    .section-footer {
+        padding: 80px 50px;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    .footer-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 80px;
+        margin-bottom: 50px;
+    }
+
+    .footer-col {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .footer-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #3a3a3a;
+        font-family: 'Playfair Display', serif;
+        margin-bottom: 10px;
+    }
+
+    .footer-text {
+        font-size: 13px;
+        color: rgba(58, 58, 58, 0.6);
+        line-height: 2;
+        font-weight: 300;
+    }
+
+    .footer-link {
+        font-size: 13px;
+        color: rgba(58, 58, 58, 0.5);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-weight: 300;
+    }
+
+    .footer-link:hover {
+        color: #CBBBB9;
+        padding-left: 8px;
+    }
+
+    .footer-divider {
+        width: 100%;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.4);
+        margin: 20px 0;
+    }
+
+    .footer-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: rgba(58, 58, 58, 0.4);
+        font-weight: 300;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .faq-wrapper,
+        .footer-wrapper {
+            grid-template-columns: 1fr;
+        }
+
+        .features-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .hero-title {
+            font-size: 44px;
+        }
+
+        .faq-title {
+            font-size: 32px;
+        }
+
+        .headphone-img {
+            width: 300px;
+            height: 300px;
+        }
+
+        .glass-container {
+            padding: 50px 30px;
+        }
+    }
+</style>
+
+```
+
+</head>
+<body>
+<!-- ===== NAVIGATION ===== -->
+<nav>
+<div class="logo-container">
+<img id="logoImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23CBBBB9' rx='8'/%3E%3Ctext x='24' y='28' font-size='24' font-weight='bold' fill='white' text-anchor='middle'%3EMC%3C/text%3E%3C/svg%3E" alt="Logo">
+<span class="logo-text">MusicCore</span>
+</div>
+<div class="auth-buttons">
+<a href="LOGIN_LINK_HERE" class="btn-auth btn-login">로그인</a>
+<a href="SIGNUP_LINK_HERE" class="btn-auth btn-signup">회원가입</a>
+</div>
+</nav>
+
+```
+<!-- ===== SECTION 1: HERO ===== -->
+<section class="section-hero">
+    <div class="hero-content">
+        <h1 class="hero-title">UNLOCK YOUR SOUND</h1>
+        <p class="hero-subtitle">스크롤하여 계속</p>
+    </div>
+</section>
+
+<!-- ===== SECTION 2: FEATURES ===== -->
+<section class="section-features">
+    <div class="features-wrapper">
+        <div class="headphone-sticky">
+            <div class="headphone-img"></div>
+        </div>
+
+        <div class="glass-container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎵</div>
+                    <h3 class="feature-title">음악 분석</h3>
+                    <p class="feature-text">고급 자연어 처리로 당신의 음악 선호도를 분석합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">❤️</div>
+                    <h3 class="feature-title">감정 기반 추천</h3>
+                    <p class="feature-text">머신러닝으로 당신의 감정 상태에 맞는 곡을 추천합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⏱️</div>
+                    <h3 class="feature-title">실시간 인사이트</h3>
+                    <p class="feature-text">즉각적인 음악 상태 평가를 제공합니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SECTION 3: FAQ ===== -->
+<section class="section-faq">
+    <div class="faq-wrapper">
+        <div class="faq-image-sticky">
+            <div class="faq-img"></div>
+        </div>
+
+        <div class="faq-list">
+            <h2 class="faq-title">자주 묻는 질문</h2>
+
+            <div class="faq-item">
+                <div class="faq-question-box">
+                    <span class="faq-question-text">AI는 어떻게 작동하나요?</span>
+                    <span class="faq-icon">▼</span>
+                </div>
+                <div class="faq-tooltip">우리의 AI는 고급 머신러닝을 사용하여 음악 패턴을 분석하고 당신의 감정에 맞는 곡을 추천합니다</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question-box">
+                    <span class="faq-question-text">데이터 보안은 어떻게 보장되나요?</span>
+                    <span class="faq-icon">▼</span>
+                </div>
+                <div class="faq-tooltip">최고 수준의 AES-256 암호화와 GDPR 준수 보안 프로토콜을 사용하여 당신의 데이터를 보호합니다</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question-box">
+                    <span class="faq-question-text">서비스를 어떻게 통합하나요?</span>
+                    <span class="faq-icon">▼</span>
+                </div>
+                <div class="faq-tooltip">REST API를 통해 간단하게 통합할 수 있으며 자세한 개발자 문서와 24/7 지원을 제공합니다</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question-box">
+                    <span class="faq-question-text">어떤 인사이트를 제공하나요?</span>
+                    <span class="faq-icon">▼</span>
+                </div>
+                <div class="faq-tooltip">감정 분석, 선호도 트렌드, 실시간 큐레이션, 사용자 행동 분석 등 상세한 인사이트를 제공합니다</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question-box">
+                    <span class="faq-question-text">시스템은 얼마나 자주 업데이트되나요?</span>
+                    <span class="faq-icon">▼</span>
+                </div>
+                <div class="faq-tooltip">월 1회 정기 업데이트와 필요시 긴급 업데이트를 지원하며 새로운 기능을 지속적으로 추가합니다</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SECTION 4: FOOTER ===== -->
+<section class="section-footer">
+    <div class="footer-wrapper">
+        <div class="footer-col">
+            <h4 class="footer-title">연락처</h4>
+            <div class="footer-text">
+                이메일: <a href="mailto:hello@musiccore.ai" style="color: #CBBBB9; text-decoration: none;">hello@musiccore.ai</a><br>
+                주소: 서울시 강남구<br>
+                Republic of Korea
+            </div>
+        </div>
+        <div class="footer-col">
+            <h4 class="footer-title">메뉴</h4>
+            <a href="#" class="footer-link">소개</a>
+            <a href="#" class="footer-link">기술</a>
+            <a href="#" class="footer-link">우리 서비스</a>
+            <a href="#" class="footer-link">사례</a>
+            <a href="#" class="footer-link">FAQ</a>
+        </div>
+        <div class="footer-col">
+            <h4 class="footer-title">법적 고지</h4>
+            <a href="#" class="footer-link">개인정보 보호</a>
+            <a href="#" class="footer-link">이용약관</a>
+            <a href="#" class="footer-link">쿠키 정책</a>
+        </div>
+    </div>
+    <div class="footer-divider"></div>
+    <div class="footer-bottom">
+        <span>© 2025 MusicCore Labs, Inc. All rights reserved.</span>
+        <span>Designed with ❤️ | Built by MusicCore Team</span>
+    </div>
+</section>
+
+<script>
+    // ===== SCROLL ANIMATIONS =====
+    window.addEventListener('scroll', () => {
+        // ===== HEADPHONE SCALING =====
+        const headphoneImg = document.querySelector('.headphone-img');
+        const featuresSection = document.querySelector('.section-features');
+        const featuresRect = featuresSection.getBoundingClientRect();
+        const viewportCenter = window.innerHeight / 2;
+
+        const distance = Math.abs(viewportCenter - (featuresRect.top + 300));
+        const maxDistance = window.innerHeight * 2;
+        const scale = Math.max(0.6, Math.min(1.5, 1 + (distance / maxDistance) * 0.8));
+
+        headphoneImg.style.transform = `scale(${scale})`;
+
+        // ===== FEATURE CARDS VISIBILITY =====
+        const featureCards = document.querySelectorAll('.feature-card');
+        featureCards.forEach((card, index) => {
+            const cardRect = card.getBoundingClientRect();
+            if (cardRect.top < window.innerHeight * 0.8) {
+                setTimeout(() => {
+                    card.classList.add('visible');
+                }, index * 150);
+            }
+        });
+
+        // ===== PARALLAX EFFECT FOR FAQ IMAGE =====
+        const faqImg = document.querySelector('.faq-img');
+        const faqRect = faqImg.getBoundingClientRect();
+
+        if (faqRect.top < window.innerHeight) {
+            const parallax = (faqRect.top * 0.5);
+            faqImg.style.transform = `translateY(${parallax}px)`;
+        }
+    });
+
+    // ===== FAQ INTERACTIONS =====
+    const faqItems = document.querySelectorAll('.faq-item');
+
+    faqItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.stopPropagation();
+
+            faqItems.forEach(other => {
+                if (other !== this) {
+                    other.classList.remove('active');
+                }
+            });
+
+            this.classList.toggle('active');
+        });
+
+        const tooltip = item.querySelector('.faq-tooltip');
+        if (tooltip) {
+            item.addEventListener('mouseenter', function() {
+                tooltip.style.opacity = '1';
+            });
+            item.addEventListener('mouseleave', function() {
+                tooltip.style.opacity = '0';
+            });
+        }
+    });
+
+    // ===== SMOOTH LINK NAVIGATION =====
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            if (href !== '#') {
+                e.preventDefault();
+                const target = document.querySelector(href);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        });
+    });
+
+    // ===== PAGE LOAD ANIMATION =====
+    window.addEventListener('load', () => {
+        const heroTitle = document.querySelector('.hero-title');
+        const heroSubtitle = document.querySelector('.hero-subtitle');
+
+        heroTitle.style.animation = 'fadeInDown 1s ease-out forwards';
+        heroSubtitle.style.animation = 'fadeInDown 1s ease-out 0.3s forwards';
+    });
+</script>
+
+```
+
+</body>
+</html>
