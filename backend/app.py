@@ -17,8 +17,18 @@ import hashlib
 import re
 
 # ✅ 새로 추가: DB 함수 import
-from db_final import init_db as init_db_new
-from db_utils import save_track_from_spotify
+from db_final import init_db
+from db_utils import (
+    save_track_from_spotify,
+    save_audio_features,
+    get_audio_features,
+    get_tracks_without_audio_features,
+    compute_track_cooccurrence,
+    get_cooccurring_tracks,
+    get_user_training_data,
+    get_database_stats,
+    migrate_audio_features
+)
 
 load_dotenv()
 
@@ -692,6 +702,220 @@ def get_playlist_tracks(playlist_id):
     except Exception as e:
         print(f"❌ 곡 목록 조회 오류: {e}")
         return jsonify({"success": False, "message": "오류 발생"}), 500
+# 705줄까지는 기존 코드
+
+# ===== 여기서부터 새로운 API 추가! ===== (706번 라인)
+
+# ===== Audio Features API =====
+@app.route('/api/audio-features/<track_id>', methods=['GET', 'OPTIONS'])
+def get_track_audio_features(track_id):
+    """특정 곡의 Audio Features 조회"""
+    try:
+        features = get_audio_features(track_id)
+        if features:
+            return jsonify({
+                "success": True,
+                "source": "database",
+                "data": features
+            }), 200
+        
+        token = get_spotify_token()
+        if not token:
+            return jsonify({"success": False, "error": "Spotify 인증 실패"}), 500
+        
+        headers = {'Authorization': f'Bearer {token}'}
+        response = requests.get(
+            f'{SPOTIFY_API_URL}/audio-features/{track_id}',
+            headers=headers,
+            timeout=10
+        )
+        response.raise_for_status()
+        
+        features_data = response.json()
+        save_audio_features(track_id, features_data)
+        
+        print(f"✅ Audio Features 수집: {track_id}")
+        
+        return jsonify({
+            "success": True,
+            "source": "spotify",
+            "data": features_data
+        }), 200
+    
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Audio Features 조회 오류: {e}")
+        return jsonify({"success": False, "error": "조회 실패"}), 500
+
+@app.route('/api/audio-features/batch', methods=['POST', 'OPTIONS'])
+def fetch_audio_features_batch():
+    """여러 곡의 Audio Features 한번에 수집"""
+    try:
+        data = request.get_json()
+        track_ids = data.get('track_ids', [])
+        
+        if not track_ids or len(track_ids) > 100:
+            return jsonify({"success": False, "error": "track_ids는 1~100개여야 합니다"}), 400
+        
+        token = get_spotify_token()
+        if not token:
+            return jsonify({"success": False, "error": "Spotify 인증 실패"}), 500
+        
+        headers = {'Authorization': f'Bearer {token}'}
+        params = {'ids': ','.join(track_ids)}
+        
+        response = requests.get(
+            f'{SPOTIFY_API_URL}/audio-features',
+            headers=headers,
+            params=params,
+            timeout=10
+        )
+        response.raise_for_status()
+        
+        features_list = response.json().get('audio_features', [])
+        
+        saved_count = 0
+        for features in features_list:
+            if features:
+                if save_audio_features(features['id'], features):
+                    saved_count += 1
+        
+        print(f"✅ Audio Features 배치 수집: {saved_count}/{len(track_ids)}개")
+        
+        return jsonify({
+            "success": True,
+            "saved_count": saved_count,
+            "total": len(track_ids)
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ 배치 수집 오류: {e}")
+        return jsonify({"success": False, "error": "수집 실패"}), 500
+
+@app.route('/api/audio-features/missing', methods=['GET', 'OPTIONS'])
+def get_missing_audio_features():
+    """Audio Features가 없는 곡 리스트"""
+    try:
+        missing_tracks = get_tracks_without_audio_features()
+        
+        return jsonify({
+            "success": True,
+            "count": len(missing_tracks),
+            "tracks": missing_tracks
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ 오류: {e}")
+        return jsonify({"success": False, "error": "조회 실패"}), 500
+
+# ===== Track Cooccurrence API =====
+@app.route('/api/cooccurrence/compute', methods=['POST', 'OPTIONS'])
+def compute_cooccurrence():
+    """Track Cooccurrence 계산"""
+    try:
+        total_pairs = compute_track_cooccurrence()
+        
+        return jsonify({
+            "success": True,
+            "message": f"{total_pairs}개 쌍 계산 완료",
+            "total_pairs": total_pairs
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ Cooccurrence 계산 오류: {e}")
+        return jsonify({"success": False, "error": "계산 실패"}), 500
+
+@app.route('/api/cooccurrence/<track_id>', methods=['GET', 'OPTIONS'])
+def get_cooccurrence(track_id):
+    """특정 곡과 함께 등장하는 곡들 조회"""
+    try:
+        limit = request.args.get('limit', 20, type=int)
+        cooccurring = get_cooccurring_tracks(track_id, limit)
+        
+        return jsonify({
+            "success": True,
+            "track_id": track_id,
+            "count": len(cooccurring),
+            "cooccurring_tracks": [
+                {"track_id": tid, "count": count}
+                for tid, count in cooccurring
+            ]
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ 조회 오류: {e}")
+        return jsonify({"success": False, "error": "조회 실패"}), 500
+
+# ===== 모델 학습 데이터 API =====
+@app.route('/api/training-data/<int:user_id>', methods=['GET', 'OPTIONS'])
+def get_training_data_api(user_id):
+    """특정 사용자의 모델 학습용 데이터 조회"""
+    try:
+        training_data = get_user_training_data(user_id)
+        
+        if not training_data:
+            return jsonify({"success": False, "message": "사용자를 찾을 수 없습니다"}), 404
+        
+        return jsonify({
+            "success": True,
+            "data": training_data
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ 학습 데이터 조회 오류: {e}")
+        return jsonify({"success": False, "error": "조회 실패"}), 500
+
+# ===== 추천 API (임시 구현) =====
+@app.route('/api/recommendations/<int:user_id>', methods=['GET', 'OPTIONS'])
+def get_recommendations(user_id):
+    """사용자 맞춤 추천 (실시간 계산)"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT track_id FROM likes WHERE user_id = ? LIMIT 1
+        ''', (user_id,))
+        
+        liked = cursor.fetchone()
+        conn.close()
+        
+        if not liked:
+            return jsonify({
+                "success": False,
+                "message": "좋아요한 곡이 없습니다. 먼저 곡을 좋아요 해주세요."
+            }), 404
+        
+        cooccurring = get_cooccurring_tracks(liked['track_id'], limit=4)
+        recommended_ids = [tid for tid, _ in cooccurring]
+        
+        return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "recommendations": recommended_ids,
+            "note": "임시 구현 - 모델 개발 후 실제 추천으로 대체됩니다"
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ 추천 오류: {e}")
+        return jsonify({"success": False, "error": "추천 실패"}), 500
+
+# ===== DB 통계 API =====
+@app.route('/api/stats', methods=['GET', 'OPTIONS'])
+def get_stats():
+    """데이터베이스 통계"""
+    try:
+        stats = get_database_stats()
+        
+        return jsonify({
+            "success": True,
+            "stats": stats
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ 통계 조회 오류: {e}")
+        return jsonify({"success": False, "error": "조회 실패"}), 500
+
+# ===== 여기까지 새로운 API =====
 
 # ===== 헬스 체크 =====
 @app.route('/api/health', methods=['GET', 'OPTIONS'])
@@ -715,7 +939,7 @@ def internal_error(error):
 # ===== 메인 =====
 if __name__ == '__main__':
     # ✅ DB 초기화 (새 함수 사용)
-    init_db_new()
+    init_db()
     
     print("=" * 60)
     print("🎵 Spotify + Signup + 정적 파일 서빙 시작")

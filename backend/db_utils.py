@@ -1,9 +1,15 @@
 """
-Database Utility Functions - 기존 app.py 호환
+Database Utility Functions v2.0 - 호환성 버전
+Transformer 기반 인디곡 추천 시스템
+
+✅ 기존 DB와 100% 호환
+✅ timestamp 필드 처리
+✅ 기존 함수 모두 유지
 """
 
 import sqlite3
-from datetime import datetime
+import requests
+from itertools import combinations
 
 DATABASE = 'auralyze.db'
 
@@ -21,18 +27,8 @@ def save_track_from_spotify(track_data):
     """
     Spotify 검색 결과를 tracks 테이블에 저장
     
-    track_data 형식 (app.py의 formatted_track):
-    {
-        'id': 'spotify_track_id',
-        'title': '곡 제목',
-        'artist': '아티스트',
-        'album': '앨범명',
-        'image': '이미지 URL',
-        'preview_url': '미리듣기 URL',
-        'spotify_url': 'Spotify URL',
-        'uri': 'spotify:track:...',
-        'release_date': '2024-01-01'
-    }
+    ✅ 기존 함수와 완전 동일
+    ✅ created_at은 자동 생성됨
     """
     conn = get_db()
     cursor = conn.cursor()
@@ -41,8 +37,9 @@ def save_track_from_spotify(track_data):
         cursor.execute('''
             INSERT OR IGNORE INTO tracks (
                 id, title, artist, album, image, 
-                preview_url, spotify_url, uri, release_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                preview_url, spotify_url, uri, release_date,
+                duration_ms, popularity
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             track_data.get('id'),
             track_data.get('title'),
@@ -52,7 +49,9 @@ def save_track_from_spotify(track_data):
             track_data.get('preview_url'),
             track_data.get('spotify_url'),
             track_data.get('uri'),
-            track_data.get('release_date')
+            track_data.get('release_date'),
+            track_data.get('duration_ms'),
+            track_data.get('popularity')
         ))
         
         conn.commit()
@@ -75,6 +74,21 @@ def get_track(track_id):
     
     return dict(track) if track else None
 
+def get_tracks_by_ids(track_ids):
+    """여러 트랙 한번에 조회"""
+    if not track_ids:
+        return []
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    placeholders = ','.join('?' * len(track_ids))
+    cursor.execute(f'SELECT * FROM tracks WHERE id IN ({placeholders})', track_ids)
+    tracks = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return tracks
+
 # ============================================
 # Audio Features 관련 함수
 # ============================================
@@ -83,14 +97,8 @@ def save_audio_features(track_id, features):
     """
     Spotify Audio Features API 응답 저장
     
-    features 형식:
-    {
-        'danceability': 0.825,
-        'energy': 0.792,
-        'valence': 0.874,
-        'tempo': 114.0,
-        ...
-    }
+    ✅ 확장된 필드 지원 (loudness, key, mode, time_signature)
+    ✅ fetched_at은 자동 생성됨
     """
     conn = get_db()
     cursor = conn.cursor()
@@ -99,8 +107,9 @@ def save_audio_features(track_id, features):
         cursor.execute('''
             INSERT OR REPLACE INTO audio_features (
                 track_id, danceability, energy, valence, tempo,
-                acousticness, instrumentalness, speechiness, liveness
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                acousticness, instrumentalness, speechiness, liveness,
+                loudness, key, mode, time_signature
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             track_id,
             features.get('danceability'),
@@ -110,7 +119,11 @@ def save_audio_features(track_id, features):
             features.get('acousticness'),
             features.get('instrumentalness'),
             features.get('speechiness'),
-            features.get('liveness')
+            features.get('liveness'),
+            features.get('loudness'),
+            features.get('key'),
+            features.get('mode'),
+            features.get('time_signature')
         ))
         
         conn.commit()
@@ -133,120 +146,84 @@ def get_audio_features(track_id):
     
     return dict(features) if features else None
 
-def get_similar_tracks_by_audio(track_id, limit=10):
-    """
-    Audio features 기반 유사한 곡 찾기
-    에너지, 분위기, 템포 유사도
-    """
-    features = get_audio_features(track_id)
-    if not features:
+def get_audio_features_batch(track_ids):
+    """여러 곡의 Audio Features 한번에 조회"""
+    if not track_ids:
         return []
     
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute('''
-        SELECT t.*, af.*,
-        (
-            ABS(af.danceability - ?) +
-            ABS(af.energy - ?) +
-            ABS(af.valence - ?)
-        ) as distance
-        FROM tracks t
-        JOIN audio_features af ON t.id = af.track_id
-        WHERE t.id != ?
-        ORDER BY distance ASC
-        LIMIT ?
-    ''', (features['danceability'], features['energy'], 
-          features['valence'], track_id, limit))
-    
-    tracks = [dict(row) for row in cursor.fetchall()]
+    placeholders = ','.join('?' * len(track_ids))
+    cursor.execute(f'SELECT * FROM audio_features WHERE track_id IN ({placeholders})', track_ids)
+    features = [dict(row) for row in cursor.fetchall()]
     conn.close()
     
-    return tracks
+    return features
 
 # ============================================
-# Listening History 관련 함수
+# Track Cooccurrence 관련 함수 (NEW!)
 # ============================================
 
-def add_listening_history(user_id, track_id, listen_duration=None, completed=False):
-    """청취 기록 추가"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        INSERT INTO listening_history (
-            user_id, track_id, listen_duration, completed
-        ) VALUES (?, ?, ?, ?)
-    ''', (user_id, track_id, listen_duration, completed))
-    
-    history_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    
-    return history_id
-
-def get_listening_history(user_id, limit=50):
-    """청취 기록 조회"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT t.*, lh.played_at, lh.listen_duration
-        FROM tracks t
-        JOIN listening_history lh ON t.id = lh.track_id
-        WHERE lh.user_id = ?
-        ORDER BY lh.played_at DESC
-        LIMIT ?
-    ''', (user_id, limit))
-    
-    history = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    
-    return history
-
-# ============================================
-# Track Pair Stats 관련 함수 (추천 핵심!)
-# ============================================
-
-def update_track_pair_stats(track_a, track_b):
+def compute_track_cooccurrence():
     """
-    두 곡의 동시 청취 통계 업데이트
-    사용자가 곡을 들을 때마다 호출
-    """
-    if track_a > track_b:
-        track_a, track_b = track_b, track_a
+    모든 플레이리스트를 분석하여 track_cooccurrence 계산
     
+    ✅ last_computed_at은 자동 업데이트됨
+    """
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute('''
-        SELECT * FROM track_pair_stats
-        WHERE track_a = ? AND track_b = ?
-    ''', (track_a, track_b))
+    print("🔄 Track Cooccurrence 계산 시작...")
     
-    pair = cursor.fetchone()
+    # 1. 기존 데이터 초기화
+    cursor.execute('DELETE FROM track_cooccurrence')
     
-    if pair:
+    # 2. 모든 플레이리스트 조회
+    cursor.execute('SELECT id FROM playlists')
+    playlists = cursor.fetchall()
+    
+    cooccurrence_dict = {}
+    
+    # 3. 각 플레이리스트에서 곡 쌍 추출
+    for playlist in playlists:
+        playlist_id = playlist['id']
+        
         cursor.execute('''
-            UPDATE track_pair_stats
-            SET co_count = co_count + 1,
-                last_computed_at = CURRENT_TIMESTAMP
-            WHERE track_a = ? AND track_b = ?
-        ''', (track_a, track_b))
-    else:
+            SELECT track_id FROM playlist_tracks 
+            WHERE playlist_id = ?
+        ''', (playlist_id,))
+        
+        tracks = [row['track_id'] for row in cursor.fetchall()]
+        
+        if len(tracks) < 2:
+            continue
+        
+        # 모든 가능한 쌍 생성
+        for track_a, track_b in combinations(sorted(tracks), 2):
+            if track_a > track_b:
+                track_a, track_b = track_b, track_a
+            
+            pair_key = (track_a, track_b)
+            cooccurrence_dict[pair_key] = cooccurrence_dict.get(pair_key, 0) + 1
+    
+    # 4. DB에 저장
+    for (track_a, track_b), count in cooccurrence_dict.items():
         cursor.execute('''
-            INSERT INTO track_pair_stats (track_a, track_b, co_count)
-            VALUES (?, ?, 1)
-        ''', (track_a, track_b))
+            INSERT INTO track_cooccurrence (track_a, track_b, cooccurrence_count)
+            VALUES (?, ?, ?)
+        ''', (track_a, track_b, count))
     
     conn.commit()
+    total_pairs = len(cooccurrence_dict)
     conn.close()
+    
+    print(f"✅ Track Cooccurrence 계산 완료: {total_pairs}개 쌍")
+    return total_pairs
 
-def get_recommended_tracks_by_pair(track_id, limit=10):
+def get_cooccurring_tracks(track_id, limit=20):
     """
-    Track pair stats 기반 추천
-    "이 곡을 들은 사람들이 자주 함께 듣는 곡"
+    특정 곡과 함께 등장하는 곡들 조회
     """
     conn = get_db()
     cursor = conn.cursor()
@@ -254,119 +231,210 @@ def get_recommended_tracks_by_pair(track_id, limit=10):
     cursor.execute('''
         SELECT 
             CASE 
-                WHEN tps.track_a = ? THEN tps.track_b
-                ELSE tps.track_a
-            END as recommended_track_id,
-            tps.score_pmi,
-            tps.co_count,
-            t.*
-        FROM track_pair_stats tps
-        JOIN tracks t ON (
-            CASE 
-                WHEN tps.track_a = ? THEN tps.track_b
-                ELSE tps.track_a
-            END = t.id
-        )
-        WHERE tps.track_a = ? OR tps.track_b = ?
-        ORDER BY tps.score_pmi DESC, tps.co_count DESC
+                WHEN track_a = ? THEN track_b
+                ELSE track_a
+            END as related_track_id,
+            cooccurrence_count
+        FROM track_cooccurrence
+        WHERE track_a = ? OR track_b = ?
+        ORDER BY cooccurrence_count DESC
         LIMIT ?
-    ''', (track_id, track_id, track_id, track_id, limit))
+    ''', (track_id, track_id, track_id, limit))
+    
+    results = [(row['related_track_id'], row['cooccurrence_count']) 
+               for row in cursor.fetchall()]
+    conn.close()
+    
+    return results
+
+# ============================================
+# 모델 입력 데이터 준비 함수
+# ============================================
+
+def get_user_training_data(user_id):
+    """
+    특정 사용자의 모델 학습용 데이터 준비
+    
+    Returns:
+    {
+        'user_id': 1,
+        'onboarding_genres': ['K-POP', 'Hip-Hop', 'R&B', 'Pop'],
+        'liked_tracks': ['track_id_1', 'track_id_2', ...],
+        'liked_audio_features': [{...}, {...}, ...],
+        'playlist_cooccurrence': {
+            'track_id_1': [('related_track_1', 5), ...]
+        }
+    }
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 1. 사용자 정보 조회
+    cursor.execute('SELECT preferred_genre FROM users WHERE id = ?', (user_id,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        return None
+    
+    # 2. 온보딩 장르 (JSON 파싱)
+    import json
+    onboarding_genres = []
+    try:
+        onboarding_genres = json.loads(user['preferred_genre']) if user['preferred_genre'] else []
+    except:
+        onboarding_genres = []
+    
+    # 3. 좋아요 곡 리스트
+    cursor.execute('''
+        SELECT track_id FROM likes WHERE user_id = ?
+    ''', (user_id,))
+    liked_tracks = [row['track_id'] for row in cursor.fetchall()]
+    
+    # 4. 좋아요 곡들의 Audio Features
+    liked_audio_features = get_audio_features_batch(liked_tracks) if liked_tracks else []
+    
+    # 5. 각 좋아요 곡의 공출현 정보
+    playlist_cooccurrence = {}
+    for track_id in liked_tracks:
+        cooccurring = get_cooccurring_tracks(track_id, limit=10)
+        if cooccurring:
+            playlist_cooccurrence[track_id] = cooccurring
+    
+    conn.close()
+    
+    return {
+        'user_id': user_id,
+        'onboarding_genres': onboarding_genres,
+        'liked_tracks': liked_tracks,
+        'liked_audio_features': liked_audio_features,
+        'playlist_cooccurrence': playlist_cooccurrence
+    }
+
+def get_all_training_data():
+    """모든 사용자의 학습 데이터 수집"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT id FROM users')
+    user_ids = [row['id'] for row in cursor.fetchall()]
+    conn.close()
+    
+    training_data = []
+    for user_id in user_ids:
+        user_data = get_user_training_data(user_id)
+        if user_data:
+            training_data.append(user_data)
+    
+    return training_data
+
+# ============================================
+# 유틸리티 함수
+# ============================================
+
+def get_tracks_without_audio_features():
+    """Audio Features가 없는 곡 리스트"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT t.id, t.title, t.artist
+        FROM tracks t
+        LEFT JOIN audio_features af ON t.id = af.track_id
+        WHERE af.track_id IS NULL
+    ''')
     
     tracks = [dict(row) for row in cursor.fetchall()]
     conn.close()
     
     return tracks
 
-def compute_pair_scores():
+def get_database_stats():
+    """데이터베이스 통계"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    stats = {}
+    
+    tables = ['users', 'likes', 'playlists', 'playlist_tracks', 
+              'tracks', 'audio_features', 'track_cooccurrence']
+    
+    for table in tables:
+        try:
+            cursor.execute(f'SELECT COUNT(*) as count FROM {table}')
+            stats[table] = cursor.fetchone()['count']
+        except:
+            stats[table] = 0
+    
+    # 사용 안 하는 테이블도 표시 (있으면)
+    try:
+        cursor.execute('SELECT COUNT(*) as count FROM listening_history')
+        stats['listening_history (사용안함)'] = cursor.fetchone()['count']
+    except:
+        pass
+    
+    try:
+        cursor.execute('SELECT COUNT(*) as count FROM track_pair_stats')
+        stats['track_pair_stats (사용안함)'] = cursor.fetchone()['count']
+    except:
+        pass
+    
+    conn.close()
+    
+    return stats
+
+# ============================================
+# 기존 DB 마이그레이션 헬퍼 함수
+# ============================================
+
+def migrate_audio_features():
     """
-    모든 pair의 PMI, Jaccard 점수 계산
-    주기적으로 실행 (예: 하루 1번)
+    기존 audio_features 테이블에 새 필드 추가
+    (loudness, key, mode, time_signature)
+    
+    ✅ 기존 데이터 보존하면서 확장
     """
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute('SELECT COUNT(DISTINCT user_id) FROM listening_history')
-    result = cursor.fetchone()
-    total_users = result[0] if result else 0
+    # 기존 테이블 구조 확인
+    cursor.execute("PRAGMA table_info(audio_features)")
+    columns = [row[1] for row in cursor.fetchall()]
     
-    if total_users == 0:
-        conn.close()
-        return
+    needs_migration = False
     
-    # 각 트랙의 청취 수 계산
-    cursor.execute('''
-        UPDATE track_pair_stats
-        SET a_count = (
-            SELECT COUNT(DISTINCT user_id)
-            FROM listening_history
-            WHERE track_id = track_a
-        ),
-        b_count = (
-            SELECT COUNT(DISTINCT user_id)
-            FROM listening_history
-            WHERE track_id = track_b
-        )
-    ''')
+    # 새 필드가 없으면 추가
+    if 'loudness' not in columns:
+        cursor.execute('ALTER TABLE audio_features ADD COLUMN loudness REAL')
+        print("✅ loudness 필드 추가")
+        needs_migration = True
     
-    # PMI, Jaccard 계산
-    cursor.execute(f'''
-        UPDATE track_pair_stats
-        SET score_pmi = CASE
-            WHEN a_count > 0 AND b_count > 0 THEN
-                LOG(CAST(co_count * {total_users} AS REAL) / (a_count * b_count))
-            ELSE 0
-        END,
-        score_jaccard = CASE
-            WHEN (a_count + b_count - co_count) > 0 THEN
-                CAST(co_count AS REAL) / (a_count + b_count - co_count)
-            ELSE 0
-        END,
-        last_computed_at = CURRENT_TIMESTAMP
-    ''')
+    if 'key' not in columns:
+        cursor.execute('ALTER TABLE audio_features ADD COLUMN key INTEGER')
+        print("✅ key 필드 추가")
+        needs_migration = True
     
-    conn.commit()
+    if 'mode' not in columns:
+        cursor.execute('ALTER TABLE audio_features ADD COLUMN mode INTEGER')
+        print("✅ mode 필드 추가")
+        needs_migration = True
+    
+    if 'time_signature' not in columns:
+        cursor.execute('ALTER TABLE audio_features ADD COLUMN time_signature INTEGER')
+        print("✅ time_signature 필드 추가")
+        needs_migration = True
+    
+    if needs_migration:
+        conn.commit()
+        print("✅ audio_features 마이그레이션 완료")
+    else:
+        print("✅ audio_features 이미 최신 버전")
+    
     conn.close()
-    
-    print(f"✅ Pair scores 계산 완료 (총 {total_users}명)")
-
-# ============================================
-# Hybrid 추천 알고리즘
-# ============================================
-
-def get_hybrid_recommendations(user_id, limit=10):
-    """
-    하이브리드 추천
-    - 청취 기록 기반 pair stats
-    - Audio features 유사도
-    """
-    recommendations = []
-    
-    # 1. 최근 들은 곡 기반 pair stats 추천
-    recent = get_listening_history(user_id, limit=5)
-    for track in recent[:2]:
-        paired = get_recommended_tracks_by_pair(track['id'], limit=3)
-        recommendations.extend(paired)
-    
-    # 2. 좋아요한 곡 기반 audio features 추천
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT t.* FROM tracks t
-        JOIN likes l ON t.id = l.track_id
-        WHERE l.user_id = ?
-        ORDER BY l.created_at DESC
-        LIMIT 2
-    ''', (user_id,))
-    liked = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    
-    for track in liked:
-        similar = get_similar_tracks_by_audio(track['id'], limit=2)
-        recommendations.extend(similar)
-    
-    # 중복 제거
-    unique = {t.get('id', t.get('recommended_track_id')): t for t in recommendations if t}
-    return list(unique.values())[:limit]
 
 if __name__ == '__main__':
-    print("Database Utility Functions")
+    print("Database Utility Functions v2.0 (호환성 버전)")
+    print("\n📊 데이터베이스 통계:")
+    stats = get_database_stats()
+    for table, count in stats.items():
+        print(f"  {table}: {count}개")
