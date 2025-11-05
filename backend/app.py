@@ -1,7 +1,7 @@
 """
 Spotify Search + Signup Backend - Flask
 XAI 기반 음악 추천 웹사이트 백엔드
-기능: 검색 + 회원가입 + 로그인 + 정적 파일 서빙(HTML, 이미지)
+기능: 검색 + 회원가입 + 로그인 + 정적 파일 서빙(HTML, 이미지) + DB 저장
 완벽한 CORS 설정
 """
 
@@ -15,6 +15,10 @@ import json
 import sqlite3
 import hashlib
 import re
+
+# ✅ 새로 추가: DB 함수 import
+from db_final import init_db as init_db_new
+from db_utils import save_track_from_spotify
 
 load_dotenv()
 
@@ -39,63 +43,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
-    """DB 초기화 (테이블 생성)"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Users 테이블
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            nickname TEXT NOT NULL,
-            age INTEGER,
-            gender TEXT,
-            preferred_genre TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Likes 테이블 (좋아요)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS likes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            track_id TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            UNIQUE(user_id, track_id)
-        )
-    ''')
-    
-    # Playlists 테이블
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS playlists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
-    
-    # Playlist_Tracks 테이블
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS playlist_tracks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            playlist_id INTEGER NOT NULL,
-            track_id TEXT NOT NULL,
-            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(playlist_id) REFERENCES playlists(id),
-            UNIQUE(playlist_id, track_id)
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-    print("✅ 데이터베이스 초기화 완료")
+# ===== 기존 init_db() 제거됨 (db_final.py로 대체) =====
 
 # 비밀번호 해싱
 def hash_password(password):
@@ -325,8 +273,11 @@ def login():
     Response:
     {
         "success": true,
-        "user_id": 1,
-        "nickname": "닉네임",
+        "user": {
+            "id": 1,
+            "username": "user123",
+            "nickname": "닉네임"
+        },
         "message": "로그인 성공"
     }
     """
@@ -355,8 +306,11 @@ def login():
         
         return jsonify({
             "success": True,
-            "user_id": user['id'],
-            "nickname": user['nickname'],
+            "user": {
+                "id": user['id'],
+                "username": username,
+                "nickname": user['nickname']
+            },
             "message": "로그인 성공"
         }), 200
     
@@ -490,7 +444,11 @@ def search_spotify():
             }
             formatted_tracks.append(formatted_track)
         
-        print(f"✅ 검색 성공: '{query}' -> {len(formatted_tracks)}곡")
+        # ✅ 검색 결과를 DB에 자동 저장
+        for track in formatted_tracks:
+            save_track_from_spotify(track)
+        
+        print(f"✅ 검색 성공: '{query}' -> {len(formatted_tracks)}곡 (DB 저장 완료)")
         
         return jsonify({
             "success": True,
@@ -756,8 +714,8 @@ def internal_error(error):
 
 # ===== 메인 =====
 if __name__ == '__main__':
-    # DB 초기화
-    init_db()
+    # ✅ DB 초기화 (새 함수 사용)
+    init_db_new()
     
     print("=" * 60)
     print("🎵 Spotify + Signup + 정적 파일 서빙 시작")
