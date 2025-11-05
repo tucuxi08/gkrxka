@@ -41,7 +41,7 @@
             grid-template-rows: auto 1fr;
         }
 
-        /* 헤더 - 전체 너비 */
+        /* 헤더 */
         .header {
             background: var(--bg-white);
             border-radius: 12px;
@@ -58,7 +58,6 @@
         }
 
         .search-box {
-            position: relative;
             display: flex;
             gap: 10px;
         }
@@ -78,14 +77,41 @@
             box-shadow: 0 0 0 3px rgba(236, 197, 192, 0.1);
         }
 
-        .search-icon {
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 18px;
-            color: var(--text-light);
-            pointer-events: none;
+        .search-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(236, 197, 192, 0.3);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .error-message.active {
+            display: block;
         }
 
         /* 로딩 */
@@ -94,6 +120,9 @@
             text-align: center;
             padding: 20px;
             color: var(--text-light);
+            background: var(--bg-white);
+            border-radius: 12px;
+            margin-bottom: 12px;
         }
 
         .loading.active {
@@ -130,6 +159,8 @@
             font-size: 14px;
             font-weight: 700;
             color: var(--text-dark);
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-light);
         }
 
         .songs-list {
@@ -147,6 +178,7 @@
             align-items: center;
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            cursor: pointer;
         }
 
         .song-item:hover {
@@ -157,7 +189,6 @@
         .song-item.selected {
             background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
             border-color: var(--color-accent-dark);
-            color: white;
         }
 
         .song-cover {
@@ -173,11 +204,6 @@
             background-size: cover;
             background-position: center;
             overflow: hidden;
-            cursor: pointer;
-        }
-
-        .song-item.selected .song-cover {
-            background: rgba(255, 255, 255, 0.2);
         }
 
         .song-info {
@@ -234,7 +260,6 @@
         .song-item.selected .action-btn {
             background: rgba(255, 255, 255, 0.2);
             border-color: white;
-            color: white;
         }
 
         .action-btn:hover:not(:disabled) {
@@ -263,20 +288,6 @@
             font-size: 13px;
         }
 
-        .error-message {
-            background: #fee;
-            border: 1px solid #fcc;
-            color: #c33;
-            padding: 12px;
-            border-radius: 8px;
-            display: none;
-            font-size: 12px;
-        }
-
-        .error-message.active {
-            display: block;
-        }
-
         /* 우측: 플레이어 */
         .right-panel {
             background: var(--bg-white);
@@ -292,6 +303,8 @@
             font-size: 14px;
             font-weight: 700;
             color: var(--text-dark);
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-light);
         }
 
         .player-container {
@@ -488,16 +501,16 @@
                     type="text" 
                     class="search-input" 
                     id="searchInput"
-                    placeholder="곡 제목이나 아티스트로 검색..."
+                    placeholder="곡 제목이나 아티스트로 검색... (Enter 또는 검색 버튼 클릭)"
                     autocomplete="off"
                 >
-                <div class="search-icon">🔍</div>
+                <button class="search-btn" id="searchBtn">검색</button>
             </div>
+            <div class="error-message" id="errorMessage"></div>
         </div>
 
         <!-- 좌측: 검색 결과 -->
         <div class="left-panel">
-            <div class="error-message" id="errorMessage"></div>
             <div class="loading" id="loading">
                 <div class="spinner"></div>
                 <p style="margin-top: 10px;">검색 중...</p>
@@ -506,7 +519,7 @@
             <div class="songs-list" id="songsList">
                 <div class="empty-state">
                     <div class="empty-icon">🎵</div>
-                    <div class="empty-text">곡을 검색해보세요</div>
+                    <div class="empty-text">검색어를 입력하고 Enter 또는 검색 버튼을 눌러주세요</div>
                 </div>
             </div>
         </div>
@@ -529,13 +542,9 @@
     <div class="playlist-modal" id="playlistModal">
         <div class="modal-header">플레이리스트 선택</div>
         
-        <div class="modal-content" id="playlistList">
-            <!-- 플리 목록 -->
-        </div>
+        <div class="modal-content" id="playlistList"></div>
 
-        <button class="new-playlist-btn" onclick="createNewPlaylist()">
-            + 새 플레이리스트
-        </button>
+        <button class="new-playlist-btn" onclick="createNewPlaylist()">+ 새 플레이리스트</button>
 
         <div class="modal-footer">
             <button class="btn-cancel" onclick="closePlaylistModal()">취소</button>
@@ -545,8 +554,7 @@
 
     <script>
         // ===== 설정 =====
-        const API_BASE_URL = 'http://localhost:5000';
-        const DEBOUNCE_DELAY = 500;
+        const API_BASE_URL = window.location.origin;
         
         let likedSongs = [];
         let searchResults = [];
@@ -555,45 +563,64 @@
             { id: 'pl_2', name: 'Chill Vibes' },
             { id: 'pl_3', name: 'Workout Mix' },
         ];
-        let searchTimeout;
         let selectedSong = null;
 
         // ===== 초기화 =====
         document.addEventListener('DOMContentLoaded', () => {
             loadLikedSongs();
-            setupSearchListener();
-            setupModalBackdrop();
+            setupEventListeners();
+            console.log('🎵 검색 페이지 로드 완료');
         });
 
-        // ===== 검색 리스너 =====
-        function setupSearchListener() {
+        // ===== 이벤트 리스너 =====
+        function setupEventListeners() {
             const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('input', (e) => {
-                clearTimeout(searchTimeout);
-                
-                const query = e.target.value.trim();
-                
-                if (query.length === 0) {
-                    searchResults = [];
-                    renderSongs([]);
-                    hideError();
-                    return;
+            const searchBtn = document.getElementById('searchBtn');
+            const modalBackdrop = document.getElementById('modalBackdrop');
+            
+            // Enter 키로 검색
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearch();
                 }
-                
-                if (query.length < 2) return;
-                
-                searchTimeout = setTimeout(() => {
-                    performSearch(query);
-                }, DEBOUNCE_DELAY);
             });
+            
+            // 검색 버튼 클릭
+            searchBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleSearch();
+            });
+            
+            // 모달 백드롭 클릭
+            modalBackdrop.addEventListener('click', closePlaylistModal);
         }
 
-        // ===== Spotify 검색 실행 =====
+        // ===== 검색 실행 =====
+        async function handleSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            
+            if (!query) {
+                showError('검색어를 입력해주세요');
+                return;
+            }
+            
+            if (query.length < 2) {
+                showError('검색어는 2글자 이상 입력해주세요');
+                return;
+            }
+            
+            await performSearch(query);
+        }
+
+        // ===== Spotify API 검색 =====
         async function performSearch(query) {
             showLoading();
             hideError();
             
             try {
+                console.log('🔍 검색 시작:', query);
+                
                 const response = await fetch(
                     `${API_BASE_URL}/api/spotify/search?q=${encodeURIComponent(query)}&limit=15`,
                     {
@@ -610,15 +637,18 @@
                 
                 const data = await response.json();
                 
-                if (data.success) {
+                if (data.success && data.data && data.data.length > 0) {
                     searchResults = data.data;
-                    console.log('✅ 검색 성공:', searchResults);
+                    console.log('✅ 검색 성공:', searchResults.length, '곡');
                     renderSongs(searchResults);
                 } else {
-                    showError(data.error || '검색 중 오류가 발생했습니다');
+                    searchResults = [];
+                    showError('검색 결과가 없습니다');
+                    renderSongs([]);
                 }
             } catch (error) {
-                console.error('검색 오류:', error);
+                console.error('❌ 검색 오류:', error);
+                searchResults = [];
                 showError(`검색 실패: ${error.message}`);
                 renderSongs([]);
             } finally {
@@ -626,7 +656,7 @@
             }
         }
 
-        // ===== UI 렌더링 =====
+        // ===== 검색 결과 렌더링 (결과 유지!) =====
         function renderSongs(songs) {
             const songsList = document.getElementById('songsList');
             const resultsTitle = document.getElementById('resultsTitle');
@@ -643,27 +673,31 @@
             }
 
             resultsTitle.textContent = `검색 결과 (${songs.length}개)`;
+            
+            // ✅ innerHTML 한 번만 사용 (성능 향상)
             songsList.innerHTML = songs.map(song => {
                 const isLiked = likedSongs.includes(song.id);
                 const isSelected = selectedSong && selectedSong.id === song.id;
                 
                 return `
-                    <div class="song-item ${isSelected ? 'selected' : ''}" onclick="selectSong(${JSON.stringify(song).replace(/"/g, '&quot;')})">
+                    <div class="song-item ${isSelected ? 'selected' : ''}" data-song-id="${song.id}">
                         <div class="song-cover" style="${song.image ? `background-image: url('${song.image}');` : ''}">
                             ${!song.image ? '🎵' : ''}
                         </div>
                         <div class="song-info">
-                            <div class="song-title" title="${song.title}">${song.title}</div>
-                            <div class="song-artist" title="${song.artist}">${song.artist}</div>
+                            <div class="song-title" title="${escapeHtml(song.title)}">${escapeHtml(song.title)}</div>
+                            <div class="song-artist" title="${escapeHtml(song.artist)}">${escapeHtml(song.artist)}</div>
                         </div>
                         <div class="song-actions">
                             <button class="action-btn ${isLiked ? 'liked' : ''}" 
-                                    onclick="toggleLike('${song.id}', '${song.title.replace(/'/g, "\\'")}', event)"
+                                    data-action="like"
+                                    data-song-id="${song.id}"
                                     title="좋아요">
                                 ${isLiked ? '❤️' : '🤍'}
                             </button>
                             <button class="action-btn" 
-                                    onclick="showPlaylistModal('${song.id}', '${song.title.replace(/'/g, "\\'")}', event)"
+                                    data-action="playlist"
+                                    data-song-id="${song.id}"
                                     title="플레이리스트에 추가">
                                 📋
                             </button>
@@ -671,9 +705,44 @@
                     </div>
                 `;
             }).join('');
+            
+            // ✅ 이벤트 위임 방식으로 클릭 처리
+            attachSongListeners();
         }
 
-        // ===== 곡 선택 (우측에 플레이어 표시) =====
+        // ===== 이벤트 위임으로 곡 리스너 추가 =====
+        function attachSongListeners() {
+            const songsList = document.getElementById('songsList');
+            
+            songsList.addEventListener('click', (e) => {
+                const songItem = e.target.closest('.song-item');
+                if (!songItem) return;
+                
+                const songId = songItem.dataset.songId;
+                const song = searchResults.find(s => s.id === songId);
+                
+                if (!song) return;
+                
+                // 액션 버튼 클릭
+                const actionBtn = e.target.closest('.action-btn');
+                if (actionBtn) {
+                    e.stopPropagation();
+                    const action = actionBtn.dataset.action;
+                    
+                    if (action === 'like') {
+                        toggleLike(song.id, song.title);
+                    } else if (action === 'playlist') {
+                        showPlaylistModal(song.id, song.title);
+                    }
+                    return;
+                }
+                
+                // 곡 선택
+                selectSong(song);
+            });
+        }
+
+        // ===== 곡 선택 =====
         function selectSong(song) {
             selectedSong = song;
             console.log('🎵 곡 선택:', song.title);
@@ -683,7 +752,7 @@
             // Spotify 웹 플레이어 임베드
             playerDisplay.innerHTML = `
                 <iframe class="spotify-iframe"
-                        style="height: 152px;"
+                        style="height: 352px;"
                         src="https://open.spotify.com/embed/track/${song.id}?utm_source=generator" 
                         frameBorder="0" 
                         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
@@ -691,21 +760,20 @@
                 </iframe>
             `;
             
-            // 검색 결과 업데이트
+            // 선택 상태 업데이트
             renderSongs(searchResults);
         }
 
         // ===== 좋아요 토글 =====
-        function toggleLike(songId, songTitle, event) {
-            event.stopPropagation();
-            
+        function toggleLike(songId, songTitle) {
             const index = likedSongs.indexOf(songId);
+            
             if (index === -1) {
                 likedSongs.push(songId);
-                console.log(`❤️ 좋아요 추가: ${songTitle}`);
+                console.log(`❤️ 좋아요: ${songTitle}`);
             } else {
                 likedSongs.splice(index, 1);
-                console.log(`💔 좋아요 제거: ${songTitle}`);
+                console.log(`💔 좋아요 취소: ${songTitle}`);
             }
             
             localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
@@ -713,12 +781,12 @@
         }
 
         // ===== 플레이리스트 모달 =====
-        function showPlaylistModal(songId, songTitle, event) {
-            event.stopPropagation();
-            document.getElementById('playlistModal').dataset.songId = songId;
-            document.getElementById('playlistModal').dataset.songTitle = songTitle;
+        function showPlaylistModal(songId, songTitle) {
+            const modal = document.getElementById('playlistModal');
+            modal.dataset.songId = songId;
+            modal.dataset.songTitle = songTitle;
             renderPlaylistList();
-            document.getElementById('playlistModal').classList.add('active');
+            modal.classList.add('active');
             document.getElementById('modalBackdrop').style.display = 'block';
         }
 
@@ -739,8 +807,9 @@
 
         function addSongToPlaylist() {
             const selectedPlaylist = document.querySelector('input[name="playlist"]:checked');
-            const songId = document.getElementById('playlistModal').dataset.songId;
-            const songTitle = document.getElementById('playlistModal').dataset.songTitle;
+            const modal = document.getElementById('playlistModal');
+            const songId = modal.dataset.songId;
+            const songTitle = modal.dataset.songTitle;
             
             if (!selectedPlaylist) {
                 alert('플레이리스트를 선택해주세요');
@@ -765,10 +834,10 @@
 
         function createNewPlaylist() {
             const name = prompt('새 플레이리스트 이름:');
-            if (name) {
+            if (name && name.trim()) {
                 const newPl = {
                     id: `pl_${Date.now()}`,
-                    name: name
+                    name: name.trim()
                 };
                 userPlaylists.push(newPl);
                 renderPlaylistList();
@@ -776,23 +845,26 @@
             }
         }
 
-        function setupModalBackdrop() {
-            document.getElementById('modalBackdrop').addEventListener('click', closePlaylistModal);
+        // ===== 유틸리티 함수 =====
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
-        // ===== localStorage 관리 =====
         function loadLikedSongs() {
             const saved = localStorage.getItem('likedSongs');
             likedSongs = saved ? JSON.parse(saved) : [];
         }
 
-        // ===== 로딩 & 에러 표시 =====
         function showLoading() {
             document.getElementById('loading').classList.add('active');
+            document.getElementById('searchBtn').disabled = true;
         }
 
         function hideLoading() {
             document.getElementById('loading').classList.remove('active');
+            document.getElementById('searchBtn').disabled = false;
         }
 
         function showError(message) {
@@ -800,6 +872,8 @@
             errorEl.textContent = message;
             errorEl.classList.add('active');
             console.error('❌ 에러:', message);
+            
+            setTimeout(() => hideError(), 3000);
         }
 
         function hideError() {
