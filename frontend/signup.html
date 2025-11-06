@@ -758,9 +758,9 @@ function completeSignup() {
                     username: username,
                     password: password,
                     nickname: nicknameValue,
-                    age: age,
+                    age: parseInt(age),
                     gender: gender,
-                    email: ''  // 이메일은 선택사항
+                    preferred_genre: ''
                 })
             })
             .then(response => response.json())

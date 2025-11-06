@@ -122,6 +122,13 @@ def main():
     """메인 페이지"""
     return app.send_static_file('main.html')
 
+# ❌ app.py에 이 부분이 없었음
+@app.route('/search')
+@app.route('/search.html')
+def search():
+    """검색 페이지"""
+    return app.send_static_file('search.html')
+
 # 이미지 서빙
 @app.route('/images/<filename>')
 def serve_image(filename):
